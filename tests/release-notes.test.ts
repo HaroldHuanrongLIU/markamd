@@ -2,8 +2,8 @@ import { expect, test } from "bun:test";
 import { getWhatsNewToastMessage } from "../src/lib/release-notes";
 
 test("calls out the latest v1.5 polish in the what's-new toast", () => {
-  expect(getWhatsNewToastMessage("1.5.15")).toBe(
-    "v1.5.15: Reading controls, prose fonts, theme polish, and hidden-toolbar fixes are here",
+  expect(getWhatsNewToastMessage("1.5.16")).toBe(
+    "v1.5.16: Reading controls, prose fonts, theme polish, and hidden-toolbar fixes are here",
   );
 });
 
