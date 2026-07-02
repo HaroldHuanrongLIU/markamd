@@ -646,6 +646,15 @@ export function App() {
     };
   }, [loadFile, setLoadError, t]);
 
+  const handleCloseTab = useCallback((id: string) => {
+    const tab = tabs.find((item) => item.id === id);
+    if (!tab) return;
+    if (tab.source !== tab.savedContent && !window.confirm(t("tabs.closeUnsaved", { name: tab.title }))) {
+      return;
+    }
+    closeTab(id);
+  }, [closeTab, tabs, t]);
+
   const shortcuts = useMemo(
     () => ({
       "mod+k": (e: KeyboardEvent) => {
@@ -680,6 +689,10 @@ export function App() {
       "mod+n": (e: KeyboardEvent) => {
         e.preventDefault();
         handleNewFile();
+      },
+      "mod+w": (e: KeyboardEvent) => {
+        e.preventDefault();
+        handleCloseTab(activeTabId);
       },
       "mod+o": (e: KeyboardEvent) => {
         e.preventDefault();
@@ -729,10 +742,12 @@ export function App() {
     }),
     [
       activePath,
+      activeTabId,
       source,
       savedContent,
       saveNow,
       saveAs,
+      handleCloseTab,
       handleOpenFile,
       handleOpenFolder,
       handleNewFile,
@@ -810,15 +825,6 @@ export function App() {
   );
 
   const displayName = activePath ? basename(activePath) : undefined;
-
-  const handleCloseTab = useCallback((id: string) => {
-    const tab = tabs.find((item) => item.id === id);
-    if (!tab) return;
-    if (tab.source !== tab.savedContent && !window.confirm(t("tabs.closeUnsaved", { name: tab.title }))) {
-      return;
-    }
-    closeTab(id);
-  }, [closeTab, tabs, t]);
 
   return (
     <div
