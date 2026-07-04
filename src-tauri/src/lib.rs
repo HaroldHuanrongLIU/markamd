@@ -7,26 +7,134 @@ use tauri::State;
 // `Emitter` and `Manager` are used by both the single-instance callback (all
 // platforms) and the macOS Finder open-with handler. `RunEvent::Opened` is
 // macOS-only, so it stays gated.
-use tauri::{Emitter, Manager};
 #[cfg(target_os = "macos")]
 use tauri::RunEvent;
+use tauri::{Emitter, Manager};
 
-struct PendingOpenFiles(Mutex<Vec<String>>);
+const WAIT_FLAG: &str = "--wait";
+const WAIT_OPEN_FLAG: &str = "--wait-open";
 
-#[cfg(target_os = "windows")]
-fn initial_open_files_from_args() -> Vec<String> {
-    std::env::args_os()
-        .skip(1)
-        .filter_map(|arg| {
-            let path = std::path::PathBuf::from(arg);
-            let ext = path.extension()?.to_str()?.to_ascii_lowercase();
-            if path.is_file() && matches!(ext.as_str(), "md" | "markdown" | "mdx") {
-                Some(path.to_string_lossy().to_string())
-            } else {
-                None
-            }
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenFileRequest {
+    path: String,
+    wait_marker: Option<String>,
+}
+
+struct PendingOpenFiles(Mutex<Vec<OpenFileRequest>>);
+
+fn is_supported_markdown_path(path: &std::path::Path) -> bool {
+    let Some(ext) = path.extension().and_then(|ext| ext.to_str()) else {
+        return false;
+    };
+    path.is_file() && matches!(ext.to_ascii_lowercase().as_str(), "md" | "markdown" | "mdx")
+}
+
+fn open_request_from_arg(
+    arg: &std::ffi::OsStr,
+    wait_marker: Option<String>,
+) -> Option<OpenFileRequest> {
+    let path = std::path::PathBuf::from(arg);
+    if is_supported_markdown_path(&path) {
+        Some(OpenFileRequest {
+            path: path.to_string_lossy().to_string(),
+            wait_marker,
         })
-        .collect()
+    } else {
+        None
+    }
+}
+
+fn open_requests_from_args<I, S>(args: I) -> Vec<OpenFileRequest>
+where
+    I: IntoIterator<Item = S>,
+    S: Into<std::ffi::OsString>,
+{
+    let mut requests = Vec::new();
+    let args: Vec<std::ffi::OsString> = args.into_iter().map(Into::into).collect();
+    let mut index = 0;
+    while index < args.len() {
+        let arg = &args[index];
+        if arg == WAIT_OPEN_FLAG {
+            let marker = args
+                .get(index + 1)
+                .map(|value| value.to_string_lossy().to_string());
+            if let (Some(marker), Some(path)) = (marker, args.get(index + 2)) {
+                if let Some(request) = open_request_from_arg(path, Some(marker)) {
+                    requests.push(request);
+                }
+            }
+            index += 3;
+            continue;
+        }
+        if arg == WAIT_FLAG {
+            index += 2;
+            continue;
+        }
+        if let Some(request) = open_request_from_arg(arg, None) {
+            requests.push(request);
+        }
+        index += 1;
+    }
+    requests
+}
+
+fn initial_open_requests_from_args() -> Vec<OpenFileRequest> {
+    open_requests_from_args(std::env::args_os().skip(1))
+}
+
+fn wait_marker_path() -> std::path::PathBuf {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or_default();
+    std::env::temp_dir().join(format!("marka-wait-{}-{nanos}.marker", std::process::id()))
+}
+
+fn handle_wait_client() -> bool {
+    let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
+    let Some(wait_index) = args.iter().position(|arg| arg == WAIT_FLAG) else {
+        return false;
+    };
+    let Some(path) = args.get(wait_index + 1) else {
+        eprintln!("marka.md: --wait requires a markdown file path");
+        std::process::exit(2);
+    };
+    let path = std::path::PathBuf::from(path);
+    if !is_supported_markdown_path(&path) {
+        eprintln!("marka.md: --wait only supports existing .md, .markdown, or .mdx files");
+        std::process::exit(2);
+    }
+
+    let marker = wait_marker_path();
+    if let Err(err) = std::fs::write(&marker, b"waiting") {
+        eprintln!("marka.md: failed to create wait marker: {err}");
+        std::process::exit(1);
+    }
+
+    let exe = match std::env::current_exe() {
+        Ok(exe) => exe,
+        Err(err) => {
+            let _ = std::fs::remove_file(&marker);
+            eprintln!("marka.md: failed to locate current executable: {err}");
+            std::process::exit(1);
+        }
+    };
+    if let Err(err) = std::process::Command::new(exe)
+        .arg(WAIT_OPEN_FLAG)
+        .arg(&marker)
+        .arg(&path)
+        .spawn()
+    {
+        let _ = std::fs::remove_file(&marker);
+        eprintln!("marka.md: failed to launch marka.md: {err}");
+        std::process::exit(1);
+    }
+
+    while marker.exists() {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+    }
+    true
 }
 
 #[tauri::command]
@@ -47,7 +155,9 @@ fn reveal_in_file_manager(path: String) {
     }
     #[cfg(target_os = "macos")]
     {
-        let _ = std::process::Command::new("open").args(["-R", &path]).spawn();
+        let _ = std::process::Command::new("open")
+            .args(["-R", &path])
+            .spawn();
     }
     #[cfg(target_os = "linux")]
     {
@@ -64,7 +174,7 @@ fn reveal_in_file_manager(path: String) {
 }
 
 #[tauri::command]
-fn take_pending_open_files(state: State<'_, PendingOpenFiles>) -> Vec<String> {
+fn take_pending_open_files(state: State<'_, PendingOpenFiles>) -> Vec<OpenFileRequest> {
     let mut pending = state
         .0
         .lock()
@@ -72,33 +182,34 @@ fn take_pending_open_files(state: State<'_, PendingOpenFiles>) -> Vec<String> {
     std::mem::take(&mut *pending)
 }
 
+#[tauri::command]
+fn complete_wait_sessions(markers: Vec<String>) -> Result<(), String> {
+    for marker in markers {
+        match std::fs::remove_file(&marker) {
+            Ok(()) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
+            Err(err) => return Err(format!("failed to complete wait session: {err}")),
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    #[cfg(target_os = "windows")]
-    let pending_open_files = initial_open_files_from_args();
-    #[cfg(not(target_os = "windows"))]
-    let pending_open_files = Vec::new();
+    if handle_wait_client() {
+        return;
+    }
+
+    let pending_open_files = initial_open_requests_from_args();
 
     let app = tauri::Builder::default()
         .manage(PendingOpenFiles(Mutex::new(pending_open_files)))
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             // A second instance was launched — forward any markdown file args
             // to the running instance, then bring its window to front.
-            let paths: Vec<String> = args
-                .iter()
-                .skip(1) // skip argv[0] (executable path)
-                .filter_map(|arg| {
-                    let path = std::path::PathBuf::from(arg);
-                    let ext = path.extension()?.to_str()?.to_ascii_lowercase();
-                    if path.is_file() && matches!(ext.as_str(), "md" | "markdown" | "mdx") {
-                        Some(path.to_string_lossy().to_string())
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            for path in paths {
-                let _ = app.emit("marka:open-file", path);
+            let requests = open_requests_from_args(args.into_iter().skip(1));
+            for request in requests {
+                let _ = app.emit("marka:open-file", request);
             }
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -111,11 +222,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .invoke_handler(tauri::generate_handler![take_pending_open_files, reveal_in_file_manager])
+        .invoke_handler(tauri::generate_handler![
+            complete_wait_sessions,
+            take_pending_open_files,
+            reveal_in_file_manager
+        ])
         .setup(|_app| {
             #[cfg(target_os = "macos")]
             {
-                let window = _app.get_webview_window("main").expect("main window missing");
+                let window = _app
+                    .get_webview_window("main")
+                    .expect("main window missing");
                 if let Err(err) = apply_vibrancy(
                     &window,
                     NSVisualEffectMaterial::Sidebar,
@@ -144,9 +261,16 @@ pub fn run() {
                             .0
                             .lock()
                             .unwrap_or_else(|poisoned| poisoned.into_inner());
-                        pending.push(path_str.clone());
+                        pending.push(OpenFileRequest {
+                            path: path_str.clone(),
+                            wait_marker: None,
+                        });
                     }
-                    if let Err(err) = _app_handle.emit("marka:open-file", path_str.clone()) {
+                    let request = OpenFileRequest {
+                        path: path_str.clone(),
+                        wait_marker: None,
+                    };
+                    if let Err(err) = _app_handle.emit("marka:open-file", request) {
                         eprintln!("marka.md: failed to emit open-file event: {err:?}");
                     } else {
                         eprintln!("marka.md: open-file requested: {path_str}");

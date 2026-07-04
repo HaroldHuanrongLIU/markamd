@@ -26,6 +26,11 @@ export type FileTab = {
   title: string;
   source: string;
   savedContent: string;
+  waitMarkers: string[];
+};
+
+export type LoadFileOptions = {
+  waitMarker?: string | null;
 };
 
 type UseFileSessionArgs = {
@@ -54,7 +59,7 @@ type UseFileSessionResult = {
   setExternalConflict: (v: string | null) => void;
   /** Accept fresh content from disk (external-change reload, "discard mine"). */
   acceptExternalChange: (fresh: string) => void;
-  loadFile: (path: string) => Promise<void>;
+  loadFile: (path: string, options?: LoadFileOptions) => Promise<void>;
   loadDemo: () => void;
   saveNow: (path: string, content: string) => Promise<void>;
   /** Picks save location + writes. Returns the chosen path (or null if cancelled). */
@@ -94,6 +99,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
       title: UNTITLED_TITLE,
       source: DEMO_MARKDOWN,
       savedContent: DEMO_MARKDOWN,
+      waitMarkers: [],
     },
   ]);
 
@@ -120,6 +126,11 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
   const titleForPath = useCallback((path: string | null) => (
     path ? basename(path) : UNTITLED_TITLE
   ), []);
+
+  const appendWaitMarker = useCallback((markers: string[], marker?: string | null) => {
+    if (!marker || markers.includes(marker)) return markers;
+    return [...markers, marker];
+  }, []);
 
   useEffect(() => {
     setTabs((prev) => prev.map((tab) => {
@@ -195,6 +206,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
         title: UNTITLED_TITLE,
         source: "",
         savedContent: "",
+        waitMarkers: [],
       };
       setTabs([blank]);
       setActiveTabId(blank.id);
@@ -216,10 +228,17 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
   }, [activeTabId, makeTabId, setActivePath, snapshotActiveTab, tabs]);
 
   const loadFile = useCallback(
-    async (path: string) => {
+    async (path: string, options: LoadFileOptions = {}) => {
       const seq = ++loadSeq.current;
       const existing = snapshotActiveTab(tabs).find((tab) => tab.path === path);
       if (existing) {
+        if (options.waitMarker) {
+          setTabs((prev) => snapshotActiveTab(prev).map((tab) => (
+            tab.id === existing.id
+              ? { ...tab, waitMarkers: appendWaitMarker(tab.waitMarkers, options.waitMarker) }
+              : tab
+          )));
+        }
         if (activePathRef.current !== path) switchTab(existing.id);
         return;
       }
@@ -245,6 +264,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
           title: titleForPath(path),
           source: content,
           savedContent: content,
+          waitMarkers: options.waitMarker ? [options.waitMarker] : [],
         };
         setTabs((prev) => [...snapshotActiveTab(prev), tab]);
         setActiveTabId(tab.id);
@@ -264,6 +284,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
       switchTab,
       tabs,
       titleForPath,
+      appendWaitMarker,
     ],
   );
 
@@ -279,6 +300,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
             title: UNTITLED_TITLE,
             source: DEMO_MARKDOWN,
             savedContent: DEMO_MARKDOWN,
+            waitMarkers: [],
           }
         : tab
     )));
@@ -292,6 +314,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
       title: UNTITLED_TITLE,
       source: initial,
       savedContent: initial,
+      waitMarkers: [],
     };
     setSource(initial);
     setSavedContent(initial);
@@ -350,6 +373,7 @@ export function useFileSession({ onLoadError }: UseFileSessionArgs = {}): UseFil
         title: titleForPath(path),
         source: content,
         savedContent: content,
+        waitMarkers: [],
       };
       setTabs((prev) => [...snapshotActiveTab(prev), tab]);
       setActiveTabId(tab.id);

@@ -60,6 +60,10 @@ import {
 import "./app.css";
 
 type ViewMode = "split" | "reading" | "editor";
+type OpenFileRequest = string | {
+  path: string;
+  waitMarker?: string | null;
+};
 
 export function App() {
   const { t } = useI18n();
@@ -79,6 +83,7 @@ export function App() {
   // Per-extension preference: 'text' | 'default', remembered until app closes.
   const extPrefs = useRef<Map<string, "text" | "default">>(new Map());
   const loadPlainTextFileRef = useRef<((path: string) => Promise<void>) | undefined>(undefined);
+  const waitMarkersRef = useRef<string[]>([]);
 
   const getExt = useCallback((path: string) => {
     const dot = path.lastIndexOf(".");
@@ -136,6 +141,38 @@ export function App() {
   } = useFileSession({ onLoadError: handleLoadError });
 
   useEffect(() => { loadPlainTextFileRef.current = loadPlainTextFile; }, [loadPlainTextFile]);
+
+  const completeWaitSessions = useCallback((markers: string[]) => {
+    const unique = Array.from(new Set(markers.filter(Boolean)));
+    if (unique.length === 0) return;
+    void invoke("complete_wait_sessions", { markers: unique }).catch((err) => {
+      console.warn("marka.md: failed to complete wait sessions", err);
+    });
+  }, []);
+
+  const handleOpenFileRequest = useCallback(async (request: OpenFileRequest) => {
+    if (typeof request === "string") {
+      if (request.length > 0) await loadFile(request);
+      return;
+    }
+    if (request?.path) {
+      await loadFile(request.path, { waitMarker: request.waitMarker });
+    }
+  }, [loadFile]);
+
+  useEffect(() => {
+    waitMarkersRef.current = tabs.flatMap((tab) => tab.waitMarkers);
+  }, [tabs]);
+
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      completeWaitSessions(waitMarkersRef.current);
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [completeWaitSessions]);
 
   const [sidebarOpen, setSidebarOpen] = usePersistedState<boolean>(
     STORAGE_KEYS.sidebarOpen,
@@ -585,21 +622,17 @@ export function App() {
     return items;
   }, [contextMenu, activePath, setActivePath, bumpTree, t]);
 
-  // OS "Open With → marka.md" from Finder — Rust emits marka:open-file
+  // OS "Open With → marka.md" and CLI launches — Rust emits marka:open-file.
   useEffect(() => {
     let unlisten: (() => void) | undefined;
-    void listen<string>("marka:open-file", (event) => {
-      const path = event.payload;
-      if (typeof path === "string" && path.length > 0) {
-        void loadFile(path);
-      }
+    void listen<OpenFileRequest>("marka:open-file", (event) => {
+      void handleOpenFileRequest(event.payload);
     }).then((un) => {
       unlisten = un;
-      void invoke<string[]>("take_pending_open_files")
-        .then((paths) => {
-          const latest = paths[paths.length - 1];
-          if (latest) {
-            void loadFile(latest);
+      void invoke<OpenFileRequest[]>("take_pending_open_files")
+        .then(async (requests) => {
+          for (const request of requests) {
+            await handleOpenFileRequest(request);
           }
         })
         .catch((err) => {
@@ -609,7 +642,7 @@ export function App() {
     return () => {
       unlisten?.();
     };
-  }, [loadFile]);
+  }, [handleOpenFileRequest]);
 
   // OS drop via Tauri events (dragDropEnabled: true).
   // Tauri intercepts file drags before the browser sees them, giving us real file paths.
@@ -652,8 +685,9 @@ export function App() {
     if (tab.source !== tab.savedContent && !window.confirm(t("tabs.closeUnsaved", { name: tab.title }))) {
       return;
     }
+    completeWaitSessions(tab.waitMarkers);
     closeTab(id);
-  }, [closeTab, tabs, t]);
+  }, [closeTab, completeWaitSessions, tabs, t]);
 
   const shortcuts = useMemo(
     () => ({
