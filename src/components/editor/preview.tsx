@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ensureMarkdownReady, renderMarkdown, useI18n, useTheme } from "@/lib";
+import { extensionFromMarkdownAssetSrc, markdownMediaAssetForExtension } from "@/lib/media-assets";
 import inspectUrl from "@/assets/mascot/inspect.png";
 import { renderMermaidBlocks } from "@/lib/mermaid";
 import { decoratePlantUmlBlocks } from "@/lib/plantuml";
@@ -35,19 +36,36 @@ function uint8ToBase64(bytes: Uint8Array): string {
   return btoa(chunks.join(""));
 }
 
-function imgMime(ext: string): string {
-  switch (ext.toLowerCase()) {
-    case "jpg": case "jpeg": return "image/jpeg";
-    case "png": return "image/png";
-    case "gif": return "image/gif";
-    case "webp": return "image/webp";
-    case "svg": return "image/svg+xml";
-    case "bmp": return "image/bmp";
-    default: return "image/png";
+function replaceImageWithMedia(img: HTMLImageElement, src: string, kind: "video" | "audio"): void {
+  const media = document.createElement(kind);
+  media.className = `mdv-media mdv-media--${kind}`;
+  media.controls = true;
+  media.preload = "metadata";
+  media.src = src;
+
+  const label = img.getAttribute("alt");
+  if (label) media.setAttribute("aria-label", label);
+
+  const title = img.getAttribute("title");
+  if (title) media.title = title;
+
+  if (kind === "video") {
+    media.setAttribute("playsinline", "");
   }
+
+  img.replaceWith(media);
 }
 
-async function resolveLocalImages(article: HTMLElement, filePath: string): Promise<void> {
+function replaceRemoteMediaImages(article: HTMLElement): void {
+  Array.from(article.querySelectorAll("img")).forEach((img) => {
+    const src = img.getAttribute("src");
+    if (!src || !/^(?:https?:|data:|tauri:|asset:)/.test(src)) return;
+    const asset = markdownMediaAssetForExtension(extensionFromMarkdownAssetSrc(src));
+    if (asset.kind !== "image") replaceImageWithMedia(img, src, asset.kind);
+  });
+}
+
+async function resolveMarkdownMediaAssets(article: HTMLElement, filePath: string): Promise<void> {
   const lastSep = Math.max(filePath.lastIndexOf("\\"), filePath.lastIndexOf("/"));
   const dir = filePath.slice(0, lastSep);
   const sep = filePath.includes("\\") ? "\\" : "/";
@@ -57,11 +75,15 @@ async function resolveLocalImages(article: HTMLElement, filePath: string): Promi
       if (!src || /^(?:https?:|data:|tauri:|asset:)/.test(src)) return;
       const decoded = decodeURIComponent(src.startsWith("./") ? src.slice(2) : src);
       const absPath = dir + sep + decoded.replace(/\//g, sep);
-      const dot = decoded.lastIndexOf(".");
-      const ext = dot >= 0 ? decoded.slice(dot + 1) : "png";
+      const asset = markdownMediaAssetForExtension(extensionFromMarkdownAssetSrc(decoded));
       try {
         const bytes = await readFile(absPath);
-        img.src = `data:${imgMime(ext)};base64,${uint8ToBase64(bytes)}`;
+        const dataUrl = `data:${asset.mime};base64,${uint8ToBase64(bytes)}`;
+        if (asset.kind === "image") {
+          img.src = dataUrl;
+        } else {
+          replaceImageWithMedia(img, dataUrl, asset.kind);
+        }
       } catch {
         // leave src as-is if file can't be read
       }
@@ -169,7 +191,8 @@ export function Preview({ source, filePath }: PreviewProps) {
   useEffect(() => {
     if (!articleRef.current || csvPreview) return;
     articleRef.current.innerHTML = html;
-    if (filePath) void resolveLocalImages(articleRef.current, filePath);
+    replaceRemoteMediaImages(articleRef.current);
+    if (filePath) void resolveMarkdownMediaAssets(articleRef.current, filePath);
   }, [html, filePath, csvPreview]);
 
   useEffect(() => {

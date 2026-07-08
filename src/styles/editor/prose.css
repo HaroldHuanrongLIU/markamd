@@ -537,6 +537,23 @@
   border: 1px solid var(--border);
 }
 
+.mdv-prose video,
+.mdv-prose audio {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--radius-md);
+}
+
+.mdv-prose video {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.mdv-prose audio {
+  margin: 10px 0;
+}
+
 .mdv-prose table {
   border-collapse: collapse;
   font-size: 0.95em;

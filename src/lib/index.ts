@@ -1,5 +1,11 @@
 export { renderMarkdown, ensureMarkdownReady } from "./markdown";
 export {
+  extensionFromMarkdownAssetSrc,
+  markdownMediaAssetForExtension,
+  type MarkdownMediaAsset,
+  type MarkdownMediaKind,
+} from "./media-assets";
+export {
   useTheme,
   useThemeMode,
   useTransparency,
