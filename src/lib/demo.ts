@@ -10,7 +10,7 @@ open a folder, star the files you keep using, stage a few notes, then copy one t
 
 ## quick tour
 
-- **tabs** keep drafts, docs, and csv files open side by side.
+- **tabs** keep drafts, docs, and csv files open side by side. press **⌘T** / **ctrl+t** for a new tab, then **⌘1..9** / **ctrl+1..9** to jump.
 - **reading mode** gives the preview room to breathe. press **⌘.** / **ctrl+.**.
 - **themes** include neutral, catppuccin, crafted palettes, and ai-inspired colors.
 - **context tray** appears only when files are staged, so the sidebar stays quiet.
@@ -76,6 +76,8 @@ You can also ==mark important phrases==, ~~cut old ideas~~, and keep lists reada
 
 Open a \`.csv\` file and marka.md shows a light read-only table preview. Handy for quick content calendars, tiny datasets, and launch checklists.
 
+Markdown image syntax can also point at local video or audio files, and marka.md turns those into playable preview controls.
+
 | channel | idea | status |
 | --- | --- | --- |
 | x | 5k downloads update | draft |
@@ -88,7 +90,7 @@ Open a \`.csv\` file and marka.md shows a light read-only table preview. Handy f
 
 ready when you are.
 
-**⌘N** for a fresh buffer. **⌘⇧O** to open a folder. **⌘K** for the command palette.
+**⌘T** for a fresh tab. **⌘1..9** to switch tabs. **⌘⇧O** to open a folder. **⌘K** for the command palette.
 
 _marka.md · open source · MIT_
 `;

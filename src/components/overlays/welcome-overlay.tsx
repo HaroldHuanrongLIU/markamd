@@ -35,7 +35,7 @@ const SLIDES: Slide[] = [
     title: "open your workspace",
     body: (
       <>
-        press <Shortcut keys="⌘+⇧+O" /> to load a folder. search the tree, star important notes, and keep drafts open in tabs.
+        press <Shortcut keys="⌘+⇧+O" /> to load a folder. use <Shortcut keys="⌘+T" /> for a new tab, then <Shortcut keys="⌘+1" /> through <Shortcut keys="⌘+9" /> to jump between drafts.
       </>
     ),
   },
@@ -44,7 +44,7 @@ const SLIDES: Slide[] = [
     title: "write with live preview",
     body: (
       <>
-        type on the left, preview on the right. markdown, code, mermaid, plantuml, tasks, and csv previews all stay close to the draft.
+        type on the left, preview on the right. markdown, code, mermaid, plantuml, tasks, csv, video, and audio previews all stay close to the draft.
       </>
     ),
   },

@@ -29,7 +29,7 @@ works with claude, chatgpt, gemini, local agents, and anything that reads plain 
 
 | area | details |
 |---|---|
-| writing | live preview, shiki highlighting, mermaid diagrams, task lists, mark/strike syntax, reading mode, editor-only mode, opt-in vim |
+| writing | live preview, shiki highlighting, mermaid diagrams, media previews, task lists, mark/strike syntax, reading mode, editor-only mode, opt-in vim |
 | ai context | stage sidebar files, see file/token counts, copy one AI-ready bundle with relative paths |
 | files | tabs, folder sidebar, favorites, search, drag-to-move, undo file ops, copy paths, reveal in file manager, useful dot-tool folders |
 | data + export | capped CSV preview, rendered code copy buttons, mermaid-aware PDF export, stable print margins |
@@ -113,6 +113,7 @@ Per-release detail lives on the [changelog](https://markamd.vercel.app/changelog
 
 - [x] v1.5 core loop: context tray, file tabs, CSV preview, grouped themes, interface languages, PDF/export polish, file workflow improvements, preview link handling, and scroll memory
 - [x] v1.5.12 polish: smoother preview scrolling, cleaner sidebar, refreshed demo doc, quickstart tutorial updates, and smarter command palette search
+- [x] v1.5.18 polish: playable media previews and faster tab shortcuts
 - [ ] next: native/silent PDF generation
 - [ ] next: context handoff presets for bring-your-own-ai workflows, starting with markdown and XML-tag bundle formats
 
