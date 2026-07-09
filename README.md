@@ -79,9 +79,11 @@ shortcuts shown with **macOS** modifiers below. on **Windows / Linux**, substitu
 | ⌘O | open a `.md` file |
 | ⌘⇧O | open a folder of notes |
 | ⌘N | new untitled buffer |
+| ⌘T | new untitled tab |
 | ⌘S | save |
 | ⌘⇧S | save as (also handles untitled buffers) |
 | ⌘B | toggle sidebar |
+| ⌘1…9 | switch to tab 1 through 9 |
 | ⌘. | toggle reading mode (preview only) |
 | ⌘⇧. | toggle editor-only mode (preview hidden) |
 | ⌘F | find / replace in editor · or find in reading mode |

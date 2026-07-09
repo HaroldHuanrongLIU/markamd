@@ -545,6 +545,12 @@ export function App() {
     startNewBuffer();
   }, [startNewBuffer]);
 
+  const switchTabByIndex = useCallback((index: number) => {
+    const tab = tabs[index];
+    if (!tab) return;
+    switchTab(tab.id);
+  }, [switchTab, tabs]);
+
   const contextItems = useMemo<ContextMenuItem[]>(() => {
     if (!contextMenu) return [];
     const { path, isDir } = contextMenu;
@@ -724,9 +730,49 @@ export function App() {
         e.preventDefault();
         handleNewFile();
       },
+      "mod+t": (e: KeyboardEvent) => {
+        e.preventDefault();
+        handleNewFile();
+      },
       "mod+w": (e: KeyboardEvent) => {
         e.preventDefault();
         handleCloseTab(activeTabId);
+      },
+      "mod+1": (e: KeyboardEvent) => {
+        e.preventDefault();
+        switchTabByIndex(0);
+      },
+      "mod+2": (e: KeyboardEvent) => {
+        e.preventDefault();
+        switchTabByIndex(1);
+      },
+      "mod+3": (e: KeyboardEvent) => {
+        e.preventDefault();
+        switchTabByIndex(2);
+      },
+      "mod+4": (e: KeyboardEvent) => {
+        e.preventDefault();
+        switchTabByIndex(3);
+      },
+      "mod+5": (e: KeyboardEvent) => {
+        e.preventDefault();
+        switchTabByIndex(4);
+      },
+      "mod+6": (e: KeyboardEvent) => {
+        e.preventDefault();
+        switchTabByIndex(5);
+      },
+      "mod+7": (e: KeyboardEvent) => {
+        e.preventDefault();
+        switchTabByIndex(6);
+      },
+      "mod+8": (e: KeyboardEvent) => {
+        e.preventDefault();
+        switchTabByIndex(7);
+      },
+      "mod+9": (e: KeyboardEvent) => {
+        e.preventDefault();
+        switchTabByIndex(8);
       },
       "mod+o": (e: KeyboardEvent) => {
         e.preventDefault();
@@ -785,6 +831,7 @@ export function App() {
       handleOpenFile,
       handleOpenFolder,
       handleNewFile,
+      switchTabByIndex,
       handleToggleSidebar,
       copyMarkdown,
       exportToPdf,

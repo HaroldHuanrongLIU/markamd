@@ -48,6 +48,7 @@ function getGroups(t: Translate): Group[] {
       { keys: "⌘+⇧+O", label: t("help.openFolder") },
       { keys: "⌘+O", label: t("help.openFile") },
       { keys: "⌘+N", label: t("help.newUntitled") },
+      { keys: "⌘+T", label: t("help.newTab") },
       { keys: "⌘+S", label: t("help.saveCurrent") },
       { keys: "⌘+⇧+S", label: t("help.saveAs") },
       { keys: "⌘+⌥+Z", label: t("help.undoSidebar") },
@@ -58,7 +59,9 @@ function getGroups(t: Translate): Group[] {
     rows: [
       { keys: "⌘+K", label: t("help.openPalette") },
       { keys: "⌘+B", label: t("help.showHideSidebar") },
+      { keys: "⌘+1…9", label: t("help.switchTab") },
       { keys: "⌘+.", label: t("help.toggleReading") },
+      { keys: "⌘+⇧+.", label: t("help.toggleEditorOnly") },
       { keys: "⌃+⌘+F", label: t("help.toggleFullscreen") },
     ],
   },
