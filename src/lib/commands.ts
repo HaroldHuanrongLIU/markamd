@@ -13,6 +13,7 @@ import {
   Download,
   Info,
   Leaf,
+  List,
   Undo2,
   Maximize2,
   Minimize2,
@@ -67,6 +68,8 @@ export type CommandActions = {
   sidebarOpen: boolean;
   readingMode: boolean;
   editorOnly: boolean;
+  tocVisible: boolean;
+  toggleToc: () => void;
   contextCount: number;
 };
 
@@ -127,6 +130,17 @@ export function buildCommands(actions: CommandActions, t: Translate = defaultT):
       action: () => actions.openRecent(path),
     }),
   );
+  const tocCommands: Command[] = actions.readingMode
+    ? [{
+        id: "toggle-toc",
+        label: actions.tocVisible ? t("command.hideToc") : t("command.showToc"),
+        hint: t("command.tocHint"),
+        icon: List,
+        category: "view",
+        keywords: ["toc", "outline", "headings", "contents"],
+        action: actions.toggleToc,
+      }]
+    : [];
 
   return [
     ...recent,
@@ -214,6 +228,7 @@ export function buildCommands(actions: CommandActions, t: Translate = defaultT):
       keywords: ["editor", "writing", "focus", "hide preview"],
       action: actions.toggleEditorOnly,
     },
+    ...tocCommands,
     {
       id: "fullscreen",
       label: t("command.fullscreen"),
