@@ -58,6 +58,12 @@ test("labels the outline command from its current visibility", () => {
   expect(hidden.find((command) => command.id === "toggle-toc")?.label).toBe("command.showToc");
 });
 
+test("keeps the separate preview window out of the command palette", () => {
+  const commands = buildCommands(commandActions());
+
+  expect(commands.some((command) => command.id === "open-preview-window")).toBe(false);
+});
+
 test("includes markdown insertion commands", () => {
   const commands = buildCommands(commandActions());
   const ids = commands.map((command) => command.id);
