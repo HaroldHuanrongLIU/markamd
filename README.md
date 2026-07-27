@@ -118,7 +118,7 @@ Per-release detail lives on the [changelog](https://markamd.vercel.app/changelog
 - [x] v1.5.18 polish: playable media previews and faster tab shortcuts
 - [x] v1.6.0 workflow: separate preview windows, command-palette markdown insertions, and Traditional Chinese localization
 - [x] v1.6.1 workflow: automatic folder monitoring, native file watching, and lazy markdown highlighting
-- [x] v1.7.0 workflow: quick file previews, app-wide zoom, and faster folder watching
+- [x] v1.7.1 workflow: quick file previews, app-wide zoom, and faster folder watching
 - [ ] next: native/silent PDF generation
 - [ ] next: context handoff presets for bring-your-own-ai workflows, starting with markdown and XML-tag bundle formats
 
