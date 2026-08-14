@@ -53,11 +53,12 @@ grab `marka.md_*-setup.exe` → run. Windows SmartScreen may ask for confirmatio
 
 ### Linux (x86_64)
 
-three flavors, pick what fits your distro:
+pick what fits your distro:
 
 - **AppImage** (works anywhere): `chmod +x marka.md_*.AppImage` → run. self-contained, no install step needed.
 - **.deb** (Debian / Ubuntu / Mint / Pop!_OS): `sudo dpkg -i marka.md_*_amd64.deb`
 - **.rpm** (Fedora / RHEL / Rocky / openSUSE): `sudo dnf install marka.md-*.x86_64.rpm`
+- **AUR** (Arch and derivatives): `yay -S markamd-appimage` or `paru -S markamd-appimage`
 
 ### from source
 
